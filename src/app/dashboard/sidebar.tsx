@@ -74,20 +74,27 @@ function getLinks(role: string): NavLink[] {
   }
 }
 
-export function DashboardSidebar({ role }: { role: string }) {
+export function SidebarContent({
+  role,
+  onNavigate,
+}: {
+  role: string
+  onNavigate?: () => void
+}) {
   const pathname = usePathname()
   const router = useRouter()
   const links = getLinks(role)
 
   async function handleLogout() {
     await logout()
+    onNavigate?.()
     router.push("/login")
     router.refresh()
   }
 
   return (
-    <aside className="w-64 border-r bg-white flex flex-col shrink-0">
-      <div className="flex items-center gap-2 h-14 px-4 border-b">
+    <div className="flex h-full flex-col bg-white">
+      <div className="flex items-center gap-2 h-14 px-4 border-b shrink-0">
         <div className="p-1.5 rounded-lg bg-primary">
           <ShieldAlert className="h-5 w-5 text-primary-foreground" />
         </div>
@@ -121,7 +128,12 @@ export function DashboardSidebar({ role }: { role: string }) {
             }
 
             return (
-              <Link key={link.href} href={link.href} className={commonClasses}>
+              <Link
+                key={link.href}
+                href={link.href}
+                className={commonClasses}
+                onClick={() => onNavigate?.()}
+              >
                 <Icon className="h-4 w-4" />
                 <span>{link.label}</span>
               </Link>
@@ -130,7 +142,7 @@ export function DashboardSidebar({ role }: { role: string }) {
         </div>
       </div>
 
-      <div className="border-t p-3 space-y-2">
+      <div className="border-t p-3 space-y-2 shrink-0">
         <button
           onClick={handleLogout}
           className="inline-flex shrink-0 items-center justify-start gap-3 rounded-lg text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-all h-9 px-2.5 w-full cursor-pointer"
@@ -142,6 +154,14 @@ export function DashboardSidebar({ role }: { role: string }) {
           MVP Demo v0.1
         </p>
       </div>
+    </div>
+  )
+}
+
+export function DashboardSidebar({ role }: { role: string }) {
+  return (
+    <aside className="hidden md:flex w-64 border-r bg-white flex-col shrink-0">
+      <SidebarContent role={role} />
     </aside>
   )
 }
