@@ -1,17 +1,14 @@
-import { cookies } from "next/headers"
-import { notFound } from "next/navigation"
+import { notFound, redirect } from "next/navigation"
 import { db } from "@/lib/db"
-import { INCIDENT_TYPES, INCIDENT_SEVERITIES } from "@/lib/constants"
+import { INCIDENT_TYPES } from "@/lib/constants"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { CheckCircle, Clock, AlertCircle } from "lucide-react"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import { IncidentTimeline } from "./timeline"
-import type { DemoUser } from "@/lib/auth"
+import { getDemoUser } from "@/lib/auth"
 
 export const dynamic = "force-dynamic"
 
@@ -22,9 +19,8 @@ export default async function IncidentDetailPage({
 }) {
   const { id } = await params
 
-  const cookieStore = await cookies()
-  const cookie = cookieStore.get("demo_user")
-  const user: DemoUser = JSON.parse(cookie!.value)
+  const user = await getDemoUser()
+  if (!user) redirect("/login")
 
   const incident = await db.incident.findUnique({
     where: { id },

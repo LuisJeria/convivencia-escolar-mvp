@@ -1,53 +1,59 @@
-import { cookies } from "next/headers"
+import Link from "next/link"
+import { redirect } from "next/navigation"
 import { db } from "@/lib/db"
 import { ROLE_LABELS } from "@/lib/constants"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { ShieldAlert, Swords, CheckCircle, Clock } from "lucide-react"
-import type { DemoUser } from "@/lib/auth"
+import { getDemoUser } from "@/lib/auth"
 
 export const dynamic = "force-dynamic"
 
 export default async function DashboardPage() {
-  const cookieStore = await cookies()
-  const cookie = cookieStore.get("demo_user")
-  const user: DemoUser = JSON.parse(cookie!.value)
+  const user = await getDemoUser()
+  if (!user) redirect("/login")
 
-  const [totalIncidents, resolvedIncidents, pendingSteps, topCourses] = await Promise.all([
-    user.role === "ESTUDIANTE"
-      ? db.incident.count({
-          where: { involved: { some: { userId: user.id } } },
-        })
-      : user.role === "APODERADO"
-        ? 0
-        : db.incident.count(),
-    user.role === "ESTUDIANTE"
-      ? db.incident.count({
-          where: {
-            status: { in: ["RESUELTO", "CERRADO"] },
-            involved: { some: { userId: user.id } },
-          },
-        })
-      : user.role === "APODERADO"
-        ? 0
-        : db.incident.count({ where: { status: { in: ["RESUELTO", "CERRADO"] } } }),
-    db.protocolStep.count({ where: { status: "PENDIENTE" } }),
-    db.course.findMany({
-      orderBy: { points: "desc" },
-      take: 5,
-      select: { id: true, name: true, points: true },
-    }),
-  ])
+  const isStudent = user.role === "ESTUDIANTE"
+  const isApoderado = user.role === "APODERADO"
 
-  const puntosEstudiante =
-    user.role === "ESTUDIANTE"
-      ? (
-          await db.pointTransaction.aggregate({
-            where: { studentId: user.id },
-            _sum: { points: true },
+  const [totalIncidents, resolvedIncidents, pendingSteps, topCourses, totalCourses] =
+    await Promise.all([
+      isStudent
+        ? db.incident.count({
+            where: { involved: { some: { userId: user.id } } },
           })
-        )._sum.points ?? 0
-      : null
+        : isApoderado
+          ? 0
+          : db.incident.count(),
+      isStudent
+        ? db.incident.count({
+            where: {
+              status: { in: ["RESUELTO", "CERRADO"] },
+              involved: { some: { userId: user.id } },
+            },
+          })
+        : isApoderado
+          ? 0
+          : db.incident.count({ where: { status: { in: ["RESUELTO", "CERRADO"] } } }),
+      isApoderado
+        ? Promise.resolve(0)
+        : db.protocolStep.count({ where: { status: "PENDIENTE" } }),
+      db.course.findMany({
+        orderBy: { points: "desc" },
+        take: 5,
+        select: { id: true, name: true, points: true },
+      }),
+      isApoderado ? Promise.resolve(0) : db.course.count(),
+    ])
+
+  const puntosEstudiante = isStudent
+    ? (
+        await db.pointTransaction.aggregate({
+          where: { studentId: user.id },
+          _sum: { points: true },
+        })
+      )._sum.points ?? 0
+    : null
 
   return (
     <div className="space-y-6">
@@ -103,20 +109,22 @@ export default async function DashboardPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">
-              {user.role === "ESTUDIANTE" ? "Tus puntos" : "Cursos activos"}
+              {isStudent ? "Tus puntos" : "Cursos activos"}
             </CardTitle>
             <Swords className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            {user.role === "ESTUDIANTE" ? (
+            {isStudent ? (
               <>
                 <div className="text-2xl font-bold">{puntosEstudiante}</div>
                 <p className="text-xs text-muted-foreground">Puntos acumulados</p>
               </>
             ) : (
               <>
-                <div className="text-2xl font-bold">5</div>
-                <p className="text-xs text-muted-foreground">Desde 1° básico a 3° medio</p>
+                <div className="text-2xl font-bold">{totalCourses}</div>
+                <p className="text-xs text-muted-foreground">
+                  Cursos registrados
+                </p>
               </>
             )}
           </CardContent>
@@ -161,7 +169,7 @@ export default async function DashboardPage() {
             <CardTitle className="text-lg">Acceso rápido</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            <a
+            <Link
               href="/dashboard/protocolos"
               className="flex items-center gap-3 p-3 rounded-lg border hover:bg-muted/50 transition-colors"
             >
@@ -172,8 +180,8 @@ export default async function DashboardPage() {
                   Gestionar casos de convivencia
                 </p>
               </div>
-            </a>
-            <a
+            </Link>
+            <Link
               href="/dashboard/gamificacion"
               className="flex items-center gap-3 p-3 rounded-lg border hover:bg-muted/50 transition-colors"
             >
@@ -184,7 +192,7 @@ export default async function DashboardPage() {
                   Puntos, ranking y prevención
                 </p>
               </div>
-            </a>
+            </Link>
           </CardContent>
         </Card>
       </div>

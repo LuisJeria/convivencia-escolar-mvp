@@ -4,7 +4,7 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { completeStep, resolveIncident, closeIncident } from "@/lib/actions"
 import { Button } from "@/components/ui/button"
-import { CheckCircle, Clock, ChevronRight } from "lucide-react"
+import { CheckCircle } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 

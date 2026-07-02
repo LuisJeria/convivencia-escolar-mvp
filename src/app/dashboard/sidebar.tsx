@@ -7,7 +7,6 @@ import { logout } from "@/lib/auth"
 import {
   LayoutDashboard,
   ShieldAlert,
-  Swords,
   Trophy,
   Users,
   School,

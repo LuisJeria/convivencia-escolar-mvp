@@ -1,23 +1,17 @@
-import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
-import { ROLE_LABELS } from "@/lib/constants"
+import { getDemoUser } from "@/lib/auth"
 import { DashboardSidebar } from "./sidebar"
 import { DashboardTopbar } from "./topbar"
-import type { DemoUser } from "@/lib/auth"
 
 export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  const cookieStore = await cookies()
-  const cookie = cookieStore.get("demo_user")
-
-  if (!cookie) {
+  const user = await getDemoUser()
+  if (!user) {
     redirect("/login")
   }
-
-  const user: DemoUser = JSON.parse(cookie.value)
 
   return (
     <div className="flex h-screen overflow-hidden">

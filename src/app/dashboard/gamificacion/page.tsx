@@ -1,18 +1,17 @@
-import { cookies } from "next/headers"
+import { redirect } from "next/navigation"
 import { db } from "@/lib/db"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Swords, Star, TrendingUp, Medal } from "lucide-react"
+import { Star, TrendingUp, Medal } from "lucide-react"
 import { OtorgarPuntosDialog } from "./otorgar-puntos"
-import type { DemoUser } from "@/lib/auth"
+import { getDemoUser } from "@/lib/auth"
 
 export const dynamic = "force-dynamic"
 
 export default async function GamificacionPage() {
-  const cookieStore = await cookies()
-  const cookie = cookieStore.get("demo_user")
-  const user: DemoUser = JSON.parse(cookie!.value)
+  const user = await getDemoUser()
+  if (!user) redirect("/login")
 
   const [topCourses, studentRankings, myPoints, pointHistory] = await Promise.all([
     db.course.findMany({

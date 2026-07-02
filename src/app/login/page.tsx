@@ -57,7 +57,7 @@ export default function LoginPage() {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {Object.entries(ROLES).map(([key, value]) => {
+          {Object.entries(ROLES).map(([key]) => {
             const Icon = ROLE_ICONS[key]
             return (
               <Card

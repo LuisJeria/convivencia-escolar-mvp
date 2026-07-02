@@ -1,17 +1,46 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
+import { z } from "zod"
 import { db } from "@/lib/db"
-import { PROTOCOL_STEPS } from "@/lib/constants"
+import { PROTOCOL_STEPS, INCIDENT_TYPES, INCIDENT_SEVERITIES } from "@/lib/constants"
 
-export async function createIncident(data: {
-  title: string
-  type: string
-  severity: string
-  description: string
-  reporterId: string
-  involved: { userId: string; role: string }[]
-}) {
+const incidentTypeValues = INCIDENT_TYPES.map((t) => t.value) as [string, ...string[]]
+const incidentSeverityValues = INCIDENT_SEVERITIES.map((s) => s.value) as [string, ...string[]]
+
+const createIncidentSchema = z.object({
+  title: z.string().trim().min(3, "Mínimo 3 caracteres").max(120),
+  type: z.enum(incidentTypeValues, { message: "Tipo inválido" }),
+  severity: z.enum(incidentSeverityValues, { message: "Gravedad inválida" }),
+  description: z.string().trim().min(10, "Mínimo 10 caracteres").max(5000),
+  reporterId: z.string().cuid("reporterId inválido"),
+  involved: z
+    .array(
+      z.object({
+        userId: z.string().cuid("userId inválido"),
+        role: z.enum(["AGRESOR", "VICTIMA", "TESTIGO"]),
+      })
+    )
+    .min(1, "Agrega al menos una persona involucrada"),
+})
+
+const idSchema = z.string().cuid("id inválido")
+
+const awardPointsSchema = z.object({
+  studentId: z.string().cuid("studentId inválido"),
+  awardedById: z.string().cuid("awardedById inválido"),
+  points: z.number().int().min(1, "Mínimo 1 punto").max(50, "Máximo 50 puntos"),
+  reason: z.string().trim().min(3, "Mínimo 3 caracteres").max(280),
+})
+
+export async function createIncident(input: unknown) {
+  const parsed = createIncidentSchema.safeParse(input)
+  if (!parsed.success) {
+    const msg = parsed.error.issues.map((i) => i.message).join("; ")
+    throw new Error(`Datos inválidos: ${msg}`)
+  }
+  const data = parsed.data
+
   const incident = await db.incident.create({
     data: {
       title: data.title,
@@ -37,9 +66,12 @@ export async function createIncident(data: {
   return incident
 }
 
-export async function completeStep(stepId: string) {
+export async function completeStep(input: unknown) {
+  const parsed = idSchema.safeParse(input)
+  if (!parsed.success) throw new Error("stepId inválido")
+
   await db.protocolStep.update({
-    where: { id: stepId },
+    where: { id: parsed.data },
     data: {
       status: "COMPLETADO",
       completedAt: new Date(),
@@ -49,30 +81,38 @@ export async function completeStep(stepId: string) {
   revalidatePath("/dashboard/protocolos")
 }
 
-export async function resolveIncident(incidentId: string) {
+export async function resolveIncident(input: unknown) {
+  const parsed = idSchema.safeParse(input)
+  if (!parsed.success) throw new Error("incidentId inválido")
+
   await db.incident.update({
-    where: { id: incidentId },
+    where: { id: parsed.data },
     data: { status: "RESUELTO" },
   })
 
   revalidatePath("/dashboard/protocolos")
 }
 
-export async function closeIncident(incidentId: string) {
+export async function closeIncident(input: unknown) {
+  const parsed = idSchema.safeParse(input)
+  if (!parsed.success) throw new Error("incidentId inválido")
+
   await db.incident.update({
-    where: { id: incidentId },
+    where: { id: parsed.data },
     data: { status: "CERRADO" },
   })
 
   revalidatePath("/dashboard/protocolos")
 }
 
-export async function awardPoints(data: {
-  studentId: string
-  awardedById: string
-  points: number
-  reason: string
-}) {
+export async function awardPoints(input: unknown) {
+  const parsed = awardPointsSchema.safeParse(input)
+  if (!parsed.success) {
+    const msg = parsed.error.issues.map((i) => i.message).join("; ")
+    throw new Error(`Datos inválidos: ${msg}`)
+  }
+  const data = parsed.data
+
   const transaction = await db.pointTransaction.create({
     data: {
       studentId: data.studentId,

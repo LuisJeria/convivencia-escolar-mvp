@@ -1,7 +1,8 @@
-import { cookies } from "next/headers"
 import Link from "next/link"
+import { redirect } from "next/navigation"
+import type { Prisma } from "@prisma/client"
 import { db } from "@/lib/db"
-import { INCIDENT_TYPES, INCIDENT_SEVERITIES, INCIDENT_STATUSES } from "@/lib/constants"
+import { INCIDENT_TYPES, INCIDENT_STATUSES } from "@/lib/constants"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
@@ -15,7 +16,7 @@ import {
 import { Plus, ChevronRight } from "lucide-react"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
-import type { DemoUser } from "@/lib/auth"
+import { getDemoUser } from "@/lib/auth"
 
 export const dynamic = "force-dynamic"
 
@@ -53,11 +54,10 @@ function getStatusBadge(status: string) {
 }
 
 export default async function ProtocolosPage() {
-  const cookieStore = await cookies()
-  const cookie = cookieStore.get("demo_user")
-  const user: DemoUser = JSON.parse(cookie!.value)
+  const user = await getDemoUser()
+  if (!user) redirect("/login")
 
-  const where: any = {}
+  const where: Prisma.IncidentWhereInput = {}
 
   if (user.role === "ESTUDIANTE") {
     where.involved = { some: { userId: user.id } }

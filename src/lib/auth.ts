@@ -1,5 +1,8 @@
 "use server"
 import { cookies } from "next/headers"
+import { z } from "zod"
+import { db } from "@/lib/db"
+import { ROLES } from "@/lib/constants"
 
 export type DemoUser = {
   id: string
@@ -10,29 +13,29 @@ export type DemoUser = {
   courseName?: string
 }
 
-export async function loginDemo(role: string): Promise<DemoUser> {
-  const { db } = await import("@/lib/db")
+const roleSchema = z.enum([
+  ROLES.ADMIN,
+  ROLES.ENCARGADO,
+  ROLES.DOCENTE,
+  ROLES.ESTUDIANTE,
+  ROLES.APODERADO,
+])
 
-  const where: any = {}
-  if (role === "ESTUDIANTE") {
-    where.role = "ESTUDIANTE"
-  } else if (role === "APODERADO") {
-    where.role = "APODERADO"
-  } else if (role === "DOCENTE") {
-    where.role = "DOCENTE"
-  } else if (role === "ENCARGADO") {
-    where.role = "ENCARGADO"
-  } else {
-    where.role = "ADMIN"
+export async function loginDemo(role: string): Promise<DemoUser> {
+  const parsed = roleSchema.safeParse(role)
+  if (!parsed.success) {
+    throw new Error("Rol inválido")
   }
 
   const user = await db.user.findFirst({
-    where,
+    where: { role: parsed.data },
     include: { course: { select: { name: true } } },
   })
 
   if (!user) {
-    throw new Error(`No hay usuarios con rol ${role} en la base de datos. Ejecuta el seed primero.`)
+    throw new Error(
+      `No hay usuarios con rol ${role} en la base de datos. Ejecuta el seed primero.`
+    )
   }
 
   const demoUser: DemoUser = {
@@ -47,7 +50,7 @@ export async function loginDemo(role: string): Promise<DemoUser> {
   const cookieStore = await cookies()
   cookieStore.set("demo_user", JSON.stringify(demoUser), {
     httpOnly: true,
-    secure: false,
+    secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     maxAge: 60 * 60 * 24,
     path: "/",
@@ -65,6 +68,14 @@ export async function getDemoUser(): Promise<DemoUser | null> {
   } catch {
     return null
   }
+}
+
+export async function requireDemoUser(): Promise<DemoUser> {
+  const user = await getDemoUser()
+  if (!user) {
+    throw new Error("No autenticado")
+  }
+  return user
 }
 
 export async function logout() {

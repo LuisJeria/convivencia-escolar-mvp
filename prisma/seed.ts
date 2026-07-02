@@ -31,7 +31,7 @@ async function main() {
     prisma.course.create({ data: { name: "3° Medio A", level: 11, points: 25 } }),
   ])
 
-  const admin = await prisma.user.create({
+  await prisma.user.create({
     data: { name: "María González", email: "admin@colegio.cl", role: "ADMIN" },
   })
 
@@ -47,7 +47,8 @@ async function main() {
     data: { name: "Pedro Rivas", email: "docente2@colegio.cl", role: "DOCENTE" },
   })
 
-  const estudiantes: Record<string, any[]> = {}
+  type EstudianteSeed = Awaited<ReturnType<typeof prisma.user.create>>
+  const estudiantes: Record<string, EstudianteSeed[]> = {}
   const nombres = [
     "Benjamín", "Sofía", "Martín", "Isidora", "Vicente", "Emilia", "Mateo", "Josefa",
     "Lucas", "Antonia", "Diego", "Fernanda", "Nicolás", "Catalina", "Tomás",
@@ -295,7 +296,7 @@ async function main() {
 
   for (const curso of cursos) {
     const coursePoints = pointData
-      .filter((pt) => estudiantes[curso.id].some((e: any) => e.id === pt.student.id))
+      .filter((pt) => estudiantes[curso.id].some((e) => e.id === pt.student.id))
       .reduce((sum, pt) => sum + pt.points, 0)
 
     if (coursePoints > 0) {
