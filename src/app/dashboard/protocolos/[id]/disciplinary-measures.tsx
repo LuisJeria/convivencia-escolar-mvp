@@ -125,7 +125,7 @@ export function DisciplinaryMeasuresSection({ incidentId, measures, canEdit }: P
                   <Label>Tipo de medida *</Label>
                   <Select
                     value={form.type}
-                    onValueChange={(val) => setForm({ ...form, type: val })}
+                    onValueChange={(val) => setForm({ ...form, type: val ?? "" })}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Seleccionar tipo" />

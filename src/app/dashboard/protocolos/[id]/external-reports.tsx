@@ -113,7 +113,7 @@ export function ExternalReportsSection({ incidentId, reports, incidentType, canE
                   <Label>Entidad *</Label>
                   <Select
                     value={form.entity}
-                    onValueChange={(val) => setForm({ ...form, entity: val })}
+                    onValueChange={(val) => setForm({ ...form, entity: val ?? "" })}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Seleccionar entidad" />
