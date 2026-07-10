@@ -41,11 +41,16 @@ export default async function DenunciasPage() {
   const pendingReportsFormatted = pendingReports.map((r) => ({
     id: r.id,
     status: r.status,
+    title: r.title,
     description: r.description,
     incidentType: r.type,
     reporterIsVictim: r.reporterIsVictim,
     createdAt: r.createdAt,
     reporter: r.reporter,
+    reporterRole: r.reporterRole,
+    involvedName: r.involvedName,
+    involvedCourse: r.involvedCourse,
+    reviewNote: r.reviewNote,
   }))
 
   return (
