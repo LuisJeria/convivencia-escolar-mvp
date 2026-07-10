@@ -115,7 +115,7 @@ export default function NuevaDenunciaPage() {
             <Label>¿Cómo te relaciones con esta situación? *</Label>
             <Select
               value={form.reporterIsVictim}
-              onValueChange={(val) => setForm({ ...form, reporterIsVictim: val })}
+              onValueChange={(val) => setForm({ ...form, reporterIsVictim: val ?? "true" })}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Selecciona una opción" />
