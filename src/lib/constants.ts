@@ -3,6 +3,7 @@ export const ROLES = {
   DIRECTOR: "DIRECTOR",
   ENCARGADO_CONVIVENCIA: "ENCARGADO_CONVIVENCIA",
   ORIENTADOR: "ORIENTADOR",
+  INSPECTOR: "INSPECTOR",
   PROFESOR_JEFE: "PROFESOR_JEFE",
   DOCENTE: "DOCENTE",
   ESTUDIANTE: "ESTUDIANTE",
@@ -16,6 +17,7 @@ export const ROLE_LABELS: Record<string, string> = {
   DIRECTOR: "Director",
   ENCARGADO_CONVIVENCIA: "Encargado de Convivencia",
   ORIENTADOR: "Orientador",
+  INSPECTOR: "Inspector",
   PROFESOR_JEFE: "Profesor Jefe",
   DOCENTE: "Docente",
   ESTUDIANTE: "Estudiante",
@@ -50,7 +52,7 @@ export const INCIDENT_STATUSES = [
   { value: "CERRADO", label: "Cerrado" },
 ] as const
 
-export const ROLES_NEED_APPROVAL = ["ORIENTADOR", "PROFESOR_JEFE", "DOCENTE"]
+export const ROLES_NEED_APPROVAL = ["ORIENTADOR", "INSPECTOR", "PROFESOR_JEFE", "DOCENTE"]
 export const ROLES_CAN_APPROVE = ["ADMIN", "DIRECTOR", "ENCARGADO_CONVIVENCIA"]
 
 export const EXTERNAL_ENTITIES = [

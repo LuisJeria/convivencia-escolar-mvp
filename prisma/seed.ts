@@ -95,6 +95,10 @@ async function main() {
     data: { name: "Lucía Pérez", email: "orientador@colegio.cl", role: "ORIENTADOR" },
   })
 
+  const inspector = await prisma.user.create({
+    data: { name: "Roberto Vega", email: "inspector@colegio.cl", role: "INSPECTOR" },
+  })
+
   const profesorJefe = await prisma.user.create({
     data: { name: "Juan Rivera", email: "profesor.jefe@colegio.cl", role: "PROFESOR_JEFE", courseId: cursos[3].id },
   })
