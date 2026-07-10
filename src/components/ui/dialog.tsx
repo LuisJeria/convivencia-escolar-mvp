@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import type { ReactNode } from "react"
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog"
 
 import { cn } from "@/lib/utils"
@@ -11,8 +12,13 @@ function Dialog({ ...props }: DialogPrimitive.Root.Props) {
   return <DialogPrimitive.Root data-slot="dialog" {...props} />
 }
 
-function DialogTrigger({ ...props }: DialogPrimitive.Trigger.Props) {
-  return <DialogPrimitive.Trigger data-slot="dialog-trigger" {...props} />
+function DialogTrigger({ children, asChild, ...props }: DialogPrimitive.Trigger.Props) {
+  if (asChild && React.isValidElement(children)) {
+    return (
+      <DialogPrimitive.Trigger data-slot="dialog-trigger" {...props} render={children} />
+    )
+  }
+  return <DialogPrimitive.Trigger data-slot="dialog-trigger" {...props}>{children}</DialogPrimitive.Trigger>
 }
 
 function DialogPortal({ ...props }: DialogPrimitive.Portal.Props) {
