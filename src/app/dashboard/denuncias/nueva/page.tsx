@@ -21,7 +21,13 @@ import {
 export default function NuevaDenunciaPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<{
+    title: string
+    description: string
+    involvedName: string
+    involvedCourse: string
+    reporterIsVictim: string
+  }>({
     title: "",
     description: "",
     involvedName: "",
