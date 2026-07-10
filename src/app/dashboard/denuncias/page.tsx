@@ -42,7 +42,7 @@ export default async function DenunciasPage() {
     id: r.id,
     status: r.status,
     description: r.description,
-    incidentType: r.incidentType,
+    incidentType: r.type,
     reporterIsVictim: r.reporterIsVictim,
     createdAt: r.createdAt,
     reporter: r.reporter,
