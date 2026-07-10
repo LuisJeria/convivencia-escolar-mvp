@@ -1,21 +1,69 @@
 import { PrismaClient } from "@prisma/client"
+import { addBusinessDays } from "date-fns"
 
 const prisma = new PrismaClient()
 
-const PROTOCOL_STEPS = [
-  { order: 0, name: "Recepción y registro de la denuncia", description: "Documentar la denuncia recibida y abrir el caso formalmente." },
-  { order: 1, name: "Notificación a apoderados", description: "Informar a los apoderados de los estudiantes involucrados sobre el caso." },
-  { order: 2, name: "Entrevista con la víctima", description: "Recopilar el relato de la víctima en entrevista individual." },
-  { order: 3, name: "Entrevista con el agresor", description: "Recopilar la versión del agresor en entrevista individual." },
-  { order: 4, name: "Entrevista con testigos", description: "Entrevistar a los testigos identificados del incidente." },
-  { order: 5, name: "Informe de investigación", description: "Redactar informe con los hallazgos y conclusiones de la investigación." },
-  { order: 6, name: "Resolución y medida disciplinaria", description: "Emitir resolución formal y aplicar medida disciplinaria si corresponde." },
-  { order: 7, name: "Seguimiento", description: "Realizar seguimiento a los 15-30 días para verificar la efectividad de las medidas." },
-]
+const PROTOCOL_STEPS_BY_TYPE: Record<string, { order: number; name: string; description: string; businessDaysDeadline: number }[]> = {
+  MALTRATO: [
+    { order: 0, name: "Recepción y registro de la denuncia", description: "Documentar la denuncia recibida y abrir el caso formalmente.", businessDaysDeadline: 0 },
+    { order: 1, name: "Notificación a apoderados y estudiantes", description: "Informar a los apoderados y estudiantes involucrados sobre el caso (sujetos de derecho).", businessDaysDeadline: 1 },
+    { order: 2, name: "Entrevista con la víctima", description: "Recopilar el relato de la víctima en entrevista individual.", businessDaysDeadline: 3 },
+    { order: 3, name: "Entrevista con el agresor", description: "Recopilar la versión del agresor en entrevista individual.", businessDaysDeadline: 3 },
+    { order: 4, name: "Informe de investigación", description: "Redactar informe con los hallazgos y conclusiones de la investigación.", businessDaysDeadline: 7 },
+    { order: 5, name: "Resolución y medida disciplinaria", description: "Emitir resolución formal y aplicar medida disciplinaria si corresponde.", businessDaysDeadline: 10 },
+    { order: 6, name: "Seguimiento 15 días", description: "Realizar seguimiento a los 15 días para verificar la efectividad de las medidas.", businessDaysDeadline: 25 },
+  ],
+  ACOSO_ESCOLAR: [
+    { order: 0, name: "Recepción y registro de la denuncia", description: "Documentar la denuncia recibida y abrir el caso formalmente.", businessDaysDeadline: 0 },
+    { order: 1, name: "Notificación a apoderados y estudiantes", description: "Informar a los apoderados y estudiantes involucrados sobre el caso (sujetos de derecho).", businessDaysDeadline: 1 },
+    { order: 2, name: "Entrevista con la víctima", description: "Recopilar el relato de la víctima en entrevista individual.", businessDaysDeadline: 2 },
+    { order: 3, name: "Entrevista con el agresor", description: "Recopilar la versión del agresor en entrevista individual.", businessDaysDeadline: 3 },
+    { order: 4, name: "Entrevista con testigos", description: "Entrevistar a los testigos identificados del incidente.", businessDaysDeadline: 5 },
+    { order: 5, name: "Informe de investigación", description: "Redactar informe con los hallazgos y conclusiones de la investigación.", businessDaysDeadline: 7 },
+    { order: 6, name: "Resolución y medida disciplinaria", description: "Emitir resolución formal y aplicar medida disciplinaria si corresponde.", businessDaysDeadline: 10 },
+    { order: 7, name: "Seguimiento 15 días", description: "Realizar seguimiento a los 15 días para verificar la efectividad de las medidas.", businessDaysDeadline: 25 },
+    { order: 8, name: "Seguimiento 30 días", description: "Realizar seguimiento a los 30 días para verificar la efectividad de las medidas.", businessDaysDeadline: 40 },
+  ],
+  VULNERACION_DERECHO: [
+    { order: 0, name: "Recepción y registro de la denuncia", description: "Documentar la denuncia recibida y abrir el caso formalmente.", businessDaysDeadline: 0 },
+    { order: 1, name: "Notificación a apoderados y estudiantes", description: "Informar a los apoderados y estudiantes involucrados sobre el caso (sujetos de derecho).", businessDaysDeadline: 1 },
+    { order: 2, name: "Entrevista con la víctima", description: "Recopilar el relato de la víctima en entrevista individual.", businessDaysDeadline: 2 },
+    { order: 3, name: "Denuncia a entidad externa", description: "Presentar denuncia ante PDI, Carabineros de Chile o Tribunal de Familia según corresponda.", businessDaysDeadline: 3 },
+    { order: 4, name: "Informe de investigación", description: "Redactar informe con los hallazgos y conclusiones de la investigación.", businessDaysDeadline: 7 },
+    { order: 5, name: "Resolución y medida disciplinaria", description: "Emitir resolución formal y aplicar medida disciplinaria si corresponde.", businessDaysDeadline: 10 },
+    { order: 6, name: "Seguimiento", description: "Realizar seguimiento para verificar la efectividad de las medidas.", businessDaysDeadline: 25 },
+  ],
+  CONSUMO_SUSTANCIAS: [
+    { order: 0, name: "Recepción y registro de la denuncia", description: "Documentar la denuncia recibida y abrir el caso formalmente.", businessDaysDeadline: 0 },
+    { order: 1, name: "Notificación a apoderados y estudiantes", description: "Informar a los apoderados y estudiantes involucrados sobre el caso (sujetos de derecho).", businessDaysDeadline: 1 },
+    { order: 2, name: "Entrevista con el estudiante", description: "Recopilar el relato del estudiante involucrado.", businessDaysDeadline: 2 },
+    { order: 3, name: "Derivación a redes de salud / Denuncia", description: "Derivación a centros de salud o presentación de denuncia según corresponda.", businessDaysDeadline: 3 },
+    { order: 4, name: "Informe de investigación", description: "Redactar informe con los hallazgos y conclusiones.", businessDaysDeadline: 7 },
+    { order: 5, name: "Resolución y medida disciplinaria", description: "Emitir resolución formal y aplicar medida disciplinaria si corresponde.", businessDaysDeadline: 10 },
+    { order: 6, name: "Seguimiento", description: "Realizar seguimiento para verificar la efectividad de las medidas.", businessDaysDeadline: 25 },
+  ],
+  default: [
+    { order: 0, name: "Recepción y registro de la denuncia", description: "Documentar la denuncia recibida y abrir el caso formalmente.", businessDaysDeadline: 0 },
+    { order: 1, name: "Notificación a apoderados y estudiantes", description: "Informar a los apoderados y estudiantes involucrados sobre el caso (sujetos de derecho).", businessDaysDeadline: 1 },
+    { order: 2, name: "Entrevista con la víctima", description: "Recopilar el relato de la víctima en entrevista individual.", businessDaysDeadline: 3 },
+    { order: 3, name: "Entrevista con el agresor", description: "Recopilar la versión del agresor en entrevista individual.", businessDaysDeadline: 3 },
+    { order: 4, name: "Entrevista con testigos", description: "Entrevistar a los testigos identificados del incidente.", businessDaysDeadline: 5 },
+    { order: 5, name: "Informe de investigación", description: "Redactar informe con los hallazgos y conclusiones de la investigación.", businessDaysDeadline: 7 },
+    { order: 6, name: "Resolución y medida disciplinaria", description: "Emitir resolución formal y aplicar medida disciplinaria si corresponde.", businessDaysDeadline: 10 },
+    { order: 7, name: "Seguimiento", description: "Realizar seguimiento a los 15-30 días para verificar la efectividad de las medidas.", businessDaysDeadline: 25 },
+  ],
+}
+
+function getStepsForType(type: string) {
+  return PROTOCOL_STEPS_BY_TYPE[type] || PROTOCOL_STEPS_BY_TYPE.default
+}
 
 async function main() {
   console.log("Seeding database...")
 
+  await prisma.appeal.deleteMany()
+  await prisma.externalReport.deleteMany()
+  await prisma.disciplinaryMeasure.deleteMany()
   await prisma.pointTransaction.deleteMany()
   await prisma.protocolStep.deleteMany()
   await prisma.incidentInvolved.deleteMany()
@@ -31,12 +79,24 @@ async function main() {
     prisma.course.create({ data: { name: "3° Medio A", level: 11, points: 25 } }),
   ])
 
-  await prisma.user.create({
+  const admin = await prisma.user.create({
     data: { name: "María González", email: "admin@colegio.cl", role: "ADMIN" },
   })
 
+  const director = await prisma.user.create({
+    data: { name: "Roberto Sánchez", email: "director@colegio.cl", role: "DIRECTOR" },
+  })
+
   const encargado = await prisma.user.create({
-    data: { name: "Carlos Muñoz", email: "encargado@colegio.cl", role: "ENCARGADO" },
+    data: { name: "Carlos Muñoz", email: "encargado@colegio.cl", role: "ENCARGADO_CONVIVENCIA" },
+  })
+
+  const orientador = await prisma.user.create({
+    data: { name: "Lucía Pérez", email: "orientador@colegio.cl", role: "ORIENTADOR" },
+  })
+
+  const profesorJefe = await prisma.user.create({
+    data: { name: "Juan Rivera", email: "profesor.jefe@colegio.cl", role: "PROFESOR_JEFE", courseId: cursos[3].id },
   })
 
   const docente1 = await prisma.user.create({
@@ -79,6 +139,18 @@ async function main() {
 
   const allEstudiantes = Object.values(estudiantes).flat()
 
+  const createSteps = (incidentId: string, type: string, fromOrder: number, reportedAt: Date) => {
+    const stepsTemplate = getStepsForType(type)
+    return stepsTemplate.map(step => ({
+      incidentId,
+      order: step.order,
+      name: step.name,
+      description: step.description,
+      businessDaysDeadline: step.businessDaysDeadline,
+      deadlineDate: addBusinessDays(reportedAt, step.businessDaysDeadline),
+    }))
+  }
+
   const incidente1 = await prisma.incident.create({
     data: {
       title: "Discusión en el recreo con insultos",
@@ -88,53 +160,39 @@ async function main() {
       description: "Durante el recreo del día lunes, dos estudiantes de 1° básico discutieron por un juguete, intercambiando insultos leves. Un docente auxiliar intervino de inmediato.",
       reporterId: docente1.id,
       assigneeId: encargado.id,
+      reportedAt: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000),
+      businessDaysElapsed: 20,
+      resolvedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
     },
   })
 
   await prisma.incidentInvolved.createMany({
     data: [
-      { incidentId: incidente1.id, userId: estudiantes[cursos[0].id][0].id, role: "AGRESOR" },
-      { incidentId: incidente1.id, userId: estudiantes[cursos[0].id][1].id, role: "VICTIMA" },
+      { incidentId: incidente1.id, userId: estudiantes[cursos[0].id][0].id, role: "AGRESOR", studentNotified: true, studentNotifiedAt: new Date(), guardianNotified: true, guardianNotifiedAt: new Date() },
+      { incidentId: incidente1.id, userId: estudiantes[cursos[0].id][1].id, role: "VICTIMA", studentNotified: true, studentNotifiedAt: new Date(), guardianNotified: true, guardianNotifiedAt: new Date() },
     ],
   })
 
-  for (const step of PROTOCOL_STEPS.slice(0, 4)) {
+  const steps1 = createSteps(incidente1.id, "MALTRATO", 0, incidente1.reportedAt!)
+  for (let i = 0; i < steps1.length; i++) {
     await prisma.protocolStep.create({
       data: {
-        incidentId: incidente1.id,
-        order: step.order,
-        name: step.name,
-        description: step.description,
-        status: "COMPLETADO",
-        completedAt: new Date(),
+        ...steps1[i],
+        status: i < 6 ? "COMPLETADO" : "PENDIENTE",
+        completedAt: i < 6 ? new Date() : null,
       },
     })
   }
 
-  for (const step of PROTOCOL_STEPS.slice(4, 6)) {
-    await prisma.protocolStep.create({
-      data: {
-        incidentId: incidente1.id,
-        order: step.order,
-        name: step.name,
-        description: step.description,
-        status: "COMPLETADO",
-        completedAt: new Date(),
-      },
-    })
-  }
-
-  for (const step of PROTOCOL_STEPS.slice(6)) {
-    await prisma.protocolStep.create({
-      data: {
-        incidentId: incidente1.id,
-        order: step.order,
-        name: step.name,
-        description: step.description,
-        status: "PENDIENTE",
-      },
-    })
-  }
+  await prisma.disciplinaryMeasure.create({
+    data: {
+      incidentId: incidente1.id,
+      type: "AMONESTACION",
+      description: "Amonestación escrita al agresor",
+      startDate: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
+      createdById: encargado.id,
+    },
+  })
 
   const incidente2 = await prisma.incident.create({
     data: {
@@ -145,130 +203,126 @@ async function main() {
       description: "Estudiante de 1° medio ha sido excluido sistemáticamente de grupos de trabajo durante las últimas 3 semanas. El estudiante reportó sentirse aislado por sus compañeros.",
       reporterId: docente2.id,
       assigneeId: encargado.id,
+      reportedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+      businessDaysElapsed: 5,
     },
   })
 
   await prisma.incidentInvolved.createMany({
     data: [
-      { incidentId: incidente2.id, userId: estudiantes[cursos[3].id][1].id, role: "AGRESOR" },
-      { incidentId: incidente2.id, userId: estudiantes[cursos[3].id][0].id, role: "VICTIMA" },
-      { incidentId: incidente2.id, userId: estudiantes[cursos[3].id][2].id, role: "TESTIGO" },
+      { incidentId: incidente2.id, userId: estudiantes[cursos[3].id][1].id, role: "AGRESOR", studentNotified: true, studentNotifiedAt: new Date(), guardianNotified: false },
+      { incidentId: incidente2.id, userId: estudiantes[cursos[3].id][0].id, role: "VICTIMA", studentNotified: true, studentNotifiedAt: new Date(), guardianNotified: true, guardianNotifiedAt: new Date() },
+      { incidentId: incidente2.id, userId: estudiantes[cursos[3].id][2].id, role: "TESTIGO", studentNotified: true, studentNotifiedAt: new Date(), guardianNotified: false },
     ],
   })
 
-  for (const step of PROTOCOL_STEPS.slice(0, 3)) {
+  const steps2 = createSteps(incidente2.id, "ACOSO_ESCOLAR", 0, incidente2.reportedAt!)
+  for (let i = 0; i < steps2.length; i++) {
     await prisma.protocolStep.create({
       data: {
-        incidentId: incidente2.id,
-        order: step.order,
-        name: step.name,
-        description: step.description,
-        status: "COMPLETADO",
-        completedAt: new Date(),
-      },
-    })
-  }
-
-  for (const step of PROTOCOL_STEPS.slice(3)) {
-    await prisma.protocolStep.create({
-      data: {
-        incidentId: incidente2.id,
-        order: step.order,
-        name: step.name,
-        description: step.description,
-        status: "PENDIENTE",
+        ...steps2[i],
+        status: i < 3 ? "COMPLETADO" : "PENDIENTE",
+        completedAt: i < 3 ? new Date() : null,
       },
     })
   }
 
   const incidente3 = await prisma.incident.create({
     data: {
-      title: "Empujón en pasillo durante cambio de hora",
-      type: "AGRESION_FISICA",
-      severity: "LEVE",
+      title: "Consumo de sustancias en el baño",
+      type: "CONSUMO_SUSTANCIAS",
+      severity: "MUY_GRAVE",
       status: "REPORTADO",
-      description: "Dos estudiantes de 3° medio forcejearon en el pasillo camino a la sala de clases. Un estudiante empujó al otro contra la pared sin causar lesiones visibles.",
+      description: "Se sorprendió a un estudiante de 3° medio consumiendo sustancias en el baño del establecimiento. Se Requiere derivación a redes de salud y posible denuncia.",
       reporterId: docente1.id,
       assigneeId: encargado.id,
+      reportedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+      businessDaysElapsed: 2,
     },
   })
 
   await prisma.incidentInvolved.createMany({
     data: [
-      { incidentId: incidente3.id, userId: estudiantes[cursos[4].id][0].id, role: "AGRESOR" },
-      { incidentId: incidente3.id, userId: estudiantes[cursos[4].id][1].id, role: "VICTIMA" },
+      { incidentId: incidente3.id, userId: estudiantes[cursos[4].id][0].id, role: "AGRESOR", studentNotified: true, studentNotifiedAt: new Date(), guardianNotified: true, guardianNotifiedAt: new Date() },
     ],
   })
 
-  for (const step of PROTOCOL_STEPS.slice(0, 2)) {
+  const steps3 = createSteps(incidente3.id, "CONSUMO_SUSTANCIAS", 0, incidente3.reportedAt!)
+  for (let i = 0; i < steps3.length; i++) {
     await prisma.protocolStep.create({
       data: {
-        incidentId: incidente3.id,
-        order: step.order,
-        name: step.name,
-        description: step.description,
-        status: "COMPLETADO",
-        completedAt: new Date(),
+        ...steps3[i],
+        status: i < 1 ? "COMPLETADO" : "PENDIENTE",
+        completedAt: i < 1 ? new Date() : null,
       },
     })
   }
 
-  for (const step of PROTOCOL_STEPS.slice(2)) {
-    await prisma.protocolStep.create({
-      data: {
-        incidentId: incidente3.id,
-        order: step.order,
-        name: step.name,
-        description: step.description,
-        status: "PENDIENTE",
-      },
-    })
-  }
+  await prisma.externalReport.create({
+    data: {
+      incidentId: incidente3.id,
+      entity: "TRIBUNAL_FAMILIA",
+      reportDate: new Date(),
+      status: "PRESENTADA",
+      description: "Denuncia presentada al Tribunal de Familia por consumo de sustancias de menor de edad",
+      filedById: encargado.id,
+    },
+  })
 
   const incidente4 = await prisma.incident.create({
     data: {
-      title: "Mensajes ofensivos en grupo de WhatsApp del curso",
-      type: "CIBERACOSO",
+      title: "Vulneración de derechos de estudiante",
+      type: "VULNERACION_DERECHO",
       severity: "GRAVE",
-      status: "REPORTADO",
-      description: "Se detectó un grupo paralelo de WhatsApp donde algunos estudiantes publicaban mensajes ofensivos y memes burlándose de un compañero. El caso fue reportado por la madre del estudiante afectado.",
-      reporterId: docente2.id,
+      status: "APELADO",
+      description: "Un docente habría vulnerado derechos de un estudiante durante clases. Se requiere investigación y denuncia a entidades correspondientes.",
+      reporterId: orientador.id,
       assigneeId: encargado.id,
+      reportedAt: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000),
+      businessDaysElapsed: 12,
+      resolvedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
     },
   })
 
   await prisma.incidentInvolved.createMany({
     data: [
-      { incidentId: incidente4.id, userId: estudiantes[cursos[2].id][2].id, role: "AGRESOR" },
-      { incidentId: incidente4.id, userId: estudiantes[cursos[2].id][0].id, role: "VICTIMA" },
-      { incidentId: incidente4.id, userId: estudiantes[cursos[2].id][1].id, role: "TESTIGO" },
+      { incidentId: incidente4.id, userId: estudiantes[cursos[2].id][0].id, role: "VICTIMA", studentNotified: true, studentNotifiedAt: new Date(), guardianNotified: true, guardianNotifiedAt: new Date() },
     ],
   })
 
-  for (const step of PROTOCOL_STEPS.slice(0, 1)) {
+  const steps4 = createSteps(incidente4.id, "VULNERACION_DERECHO", 0, incidente4.reportedAt!)
+  for (let i = 0; i < steps4.length; i++) {
     await prisma.protocolStep.create({
       data: {
-        incidentId: incidente4.id,
-        order: step.order,
-        name: step.name,
-        description: step.description,
-        status: "COMPLETADO",
-        completedAt: new Date(),
+        ...steps4[i],
+        status: i < 5 ? "COMPLETADO" : "PENDIENTE",
+        completedAt: i < 5 ? new Date() : null,
       },
     })
   }
 
-  for (const step of PROTOCOL_STEPS.slice(1)) {
-    await prisma.protocolStep.create({
-      data: {
-        incidentId: incidente4.id,
-        order: step.order,
-        name: step.name,
-        description: step.description,
-        status: "PENDIENTE",
-      },
-    })
-  }
+  await prisma.disciplinaryMeasure.create({
+    data: {
+      incidentId: incidente4.id,
+      type: "SUSPENSION",
+      description: "Suspensión del docente mientras se resuelve la investigación",
+      startDate: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
+      endDate: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000),
+      suspensionPedagogicalPlan: "Se proporciona material pedagógico en formato digital para que el estudiante continúe con sus actividades académicas",
+      suspensionMaterialDetails: "Textos digitales, guías de ejercicios y acceso a plataforma Classroom",
+      createdById: director.id,
+    },
+  })
+
+  await prisma.appeal.create({
+    data: {
+      incidentId: incidente4.id,
+      appellantId: estudiantes[cursos[2].id][0].id,
+      appellantType: "ESTUDIANTE",
+      description: "El estudiante presenta apelación porque considera que la medida de suspensión del docente no es suficiente y solicita mayores garantías de protección.",
+      submittedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
+    },
+  })
 
   const pointData = [
     { student: allEstudiantes[0], points: 15, reason: "Ayudó a un compañero a recoger sus materiales" },
@@ -277,7 +331,7 @@ async function main() {
     { student: allEstudiantes[6], points: 15, reason: "Excelente trato y respeto durante toda la semana" },
     { student: allEstudiantes[9], points: 25, reason: "Organizó actividad de bienvenida para estudiante nuevo" },
     { student: allEstudiantes[12], points: 10, reason: "Ayudó a explicar materia a compañero con dificultades" },
-    { student: allEstudiantes[2], points: 5, reason: "Buen trato y compañerismo" },
+    { student: allEstudiantes[2], points: 5, reason: "Buen trato y companerismo" },
     { student: allEstudiantes[4], points: 20, reason: "Medió conflicto en el recreo" },
     { student: allEstudiantes[7], points: 15, reason: "Colaboró en mantener sala ordenada" },
     { student: allEstudiantes[10], points: 10, reason: "Ayudó a compañero lesionado" },

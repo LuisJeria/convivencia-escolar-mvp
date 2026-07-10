@@ -13,22 +13,26 @@ export default async function GamificacionPage() {
   const user = await getDemoUser()
   if (!user) redirect("/login")
 
+  const showIndividualRanking = user.role !== "ESTUDIANTE" && user.role !== "APODERADO"
+
   const [topCourses, studentRankings, myPoints, pointHistory] = await Promise.all([
     db.course.findMany({
       orderBy: { points: "desc" },
       select: { id: true, name: true, points: true, _count: { select: { students: true } } },
     }),
-    db.user.findMany({
-      where: { role: "ESTUDIANTE" },
-      include: {
-        course: { select: { name: true } },
-        receivedPoints: { select: { points: true } },
-      },
-      orderBy: {
-        course: { points: "desc" },
-      },
-      take: 20,
-    }),
+    showIndividualRanking
+      ? db.user.findMany({
+          where: { role: "ESTUDIANTE" },
+          include: {
+            course: { select: { name: true } },
+            receivedPoints: { select: { points: true } },
+          },
+          orderBy: {
+            course: { points: "desc" },
+          },
+          take: 20,
+        })
+      : [],
     user.role === "ESTUDIANTE"
       ? db.pointTransaction.aggregate({
           where: { studentId: user.id },
@@ -157,64 +161,66 @@ export default async function GamificacionPage() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Star className="h-5 w-5 text-primary" />
-              Top Estudiantes
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {(() => {
-              const ranked = studentRankings
-                .map((s) => ({
-                  id: s.id,
-                  name: s.name,
-                  courseName: s.course?.name ?? "—",
-                  points: s.receivedPoints.reduce((sum, pt) => sum + pt.points, 0),
-                }))
-                .sort((a, b) => b.points - a.points)
-                .slice(0, 10)
+        {user.role !== "ESTUDIANTE" && user.role !== "APODERADO" && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Star className="h-5 w-5 text-primary" />
+                Top Estudiantes
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {(() => {
+                const ranked = studentRankings
+                  .map((s) => ({
+                    id: s.id,
+                    name: s.name,
+                    courseName: s.course?.name ?? "—",
+                    points: s.receivedPoints.reduce((sum, pt) => sum + pt.points, 0),
+                  }))
+                  .sort((a, b) => b.points - a.points)
+                  .slice(0, 10)
 
-              return ranked.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">
-                  No hay puntajes registrados aún.
-                </p>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-12">#</TableHead>
-                      <TableHead>Estudiante</TableHead>
-                      <TableHead>Curso</TableHead>
-                      <TableHead className="text-right">Puntos</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {ranked.map((student, index) => (
-                      <TableRow key={student.id}>
-                        <TableCell>
-                          <span
-                            className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold ${
-                              index < 3 ? "bg-primary/10 text-primary" : "text-muted-foreground"
-                            }`}
-                          >
-                            {index + 1}
-                          </span>
-                        </TableCell>
-                        <TableCell className="font-medium">{student.name}</TableCell>
-                        <TableCell className="text-sm text-muted-foreground">
-                          {student.courseName}
-                        </TableCell>
-                        <TableCell className="text-right font-bold">{student.points}</TableCell>
+                return ranked.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    No hay puntajes registrados aún.
+                  </p>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-12">#</TableHead>
+                        <TableHead>Estudiante</TableHead>
+                        <TableHead>Curso</TableHead>
+                        <TableHead className="text-right">Puntos</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )
-            })()}
-          </CardContent>
-        </Card>
+                    </TableHeader>
+                    <TableBody>
+                      {ranked.map((student, index) => (
+                        <TableRow key={student.id}>
+                          <TableCell>
+                            <span
+                              className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold ${
+                                index < 3 ? "bg-primary/10 text-primary" : "text-muted-foreground"
+                              }`}
+                            >
+                              {index + 1}
+                            </span>
+                          </TableCell>
+                          <TableCell className="font-medium">{student.name}</TableCell>
+                          <TableCell className="text-sm text-muted-foreground">
+                            {student.courseName}
+                          </TableCell>
+                          <TableCell className="text-right font-bold">{student.points}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )
+              })()}
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {user.role === "ESTUDIANTE" && pointHistory.length > 0 && (

@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useCallback } from "react"
-import { useRouter } from "next/navigation"
+import { useState, useCallback, useEffect, Suspense } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import { createIncident } from "@/lib/actions"
 import { INCIDENT_TYPES, INCIDENT_SEVERITIES } from "@/lib/constants"
 import { Button } from "@/components/ui/button"
@@ -16,7 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { ArrowLeft, ArrowRight, Check, Search, X } from "lucide-react"
+import { ArrowLeft, ArrowRight, Check, Search, X, FileText } from "lucide-react"
 import { toast } from "sonner"
 
 type StudentResult = {
@@ -32,8 +32,10 @@ type InvolvedPerson = {
   role: string
 }
 
-export default function NuevoCasoPage() {
+function NuevoCasoContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+
   const [step, setStep] = useState(1)
   const [loading, setLoading] = useState(false)
   const [title, setTitle] = useState("")
@@ -45,6 +47,31 @@ export default function NuevoCasoPage() {
   const [searchResults, setSearchResults] = useState<StudentResult[]>([])
   const [selectedRole, setSelectedRole] = useState("VICTIMA")
   const [searching, setSearching] = useState(false)
+  const [prefilledNote, setPrefilledNote] = useState("")
+
+  useEffect(() => {
+    const titleParam = searchParams.get("title")
+    const descParam = searchParams.get("description")
+    const involvedName = searchParams.get("involvedName")
+    const involvedCourse = searchParams.get("involvedCourse")
+
+    if (titleParam) {
+      setTitle(titleParam)
+      setPrefilledNote("Denuncia aprobada - caso creado desde denuncia.")
+    }
+    if (descParam) {
+      setDescription(descParam)
+    }
+    if (involvedName) {
+      setInvolved([{
+        userId: "",
+        name: involvedName,
+        courseName: involvedCourse,
+        role: "VICTIMA",
+      }])
+      setStep(2)
+    }
+  }, [searchParams])
 
   const searchStudents = useCallback(async (query: string) => {
     if (query.length < 2) {
@@ -107,6 +134,7 @@ export default function NuevoCasoPage() {
         severity,
         description,
         reporterId: user.id,
+        reporterRole: user.role,
         involved: involved.map((p) => ({
           userId: p.userId,
           role: p.role,
@@ -209,7 +237,13 @@ export default function NuevoCasoPage() {
             </div>
 
             <div className="flex justify-end">
-              <Button onClick={() => setStep(2)} disabled={!title || !type || !severity || !description}>
+              <Button onClick={() => {
+                if (!title || !type || !severity || !description) {
+                  toast.error("Completa todos los campos requeridos")
+                  return
+                }
+                setStep(2)
+              }}>
                 Siguiente
                 <ArrowRight className="h-4 w-4 ml-2" />
               </Button>
@@ -313,7 +347,13 @@ export default function NuevoCasoPage() {
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Anterior
               </Button>
-              <Button onClick={() => setStep(3)} disabled={involved.length < 2}>
+              <Button onClick={() => {
+                if (involved.length < 2) {
+                  toast.error("Agrega al menos 2 personas involucradas")
+                  return
+                }
+                setStep(3)
+              }}>
                 Siguiente
                 <ArrowRight className="h-4 w-4 ml-2" />
               </Button>
@@ -371,9 +411,18 @@ export default function NuevoCasoPage() {
               </div>
             </div>
 
+            {prefilledNote && (
+              <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                <p className="text-sm text-green-800 flex items-center gap-2">
+                  <FileText className="h-4 w-4" />
+                  {prefilledNote}
+                </p>
+              </div>
+            )}
+
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
               <p className="text-sm text-blue-800">
-                Al crear este caso se generarán automáticamente {8} pasos de protocolo
+                Al crear este caso se generarán automáticamente los pasos de protocolo
                 según la Ley 20.536 de Violencia Escolar.
               </p>
             </div>
@@ -392,5 +441,13 @@ export default function NuevoCasoPage() {
         </Card>
       )}
     </div>
+  )
+}
+
+export default function NuevoCasoPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center">Cargando...</div>}>
+      <NuevoCasoContent />
+    </Suspense>
   )
 }

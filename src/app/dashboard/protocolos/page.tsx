@@ -28,6 +28,8 @@ function getTypeBadge(type: string) {
     AGRESION_PSICOLOGICA: "bg-pink-100 text-pink-800 border-pink-200",
     CIBERACOSO: "bg-purple-100 text-purple-800 border-purple-200",
     DISCRIMINACION: "bg-blue-100 text-blue-800 border-blue-200",
+    VULNERACION_DERECHO: "bg-red-100 text-red-800 border-red-200",
+    CONSUMO_SUSTANCIAS: "bg-indigo-100 text-indigo-800 border-indigo-200",
   }
   return colors[type] || "bg-gray-100 text-gray-800 border-gray-200"
 }
@@ -44,10 +46,12 @@ function getSeverityBadge(severity: string) {
 
 function getStatusBadge(status: string) {
   const colors: Record<string, string> = {
+    PENDIENTE_APROBACION: "bg-amber-100 text-amber-800",
     REPORTADO: "bg-blue-100 text-blue-800",
     EN_INVESTIGACION: "bg-amber-100 text-amber-800",
     RESUELTO: "bg-green-100 text-green-800",
     APELADO: "bg-purple-100 text-purple-800",
+    RESOLUCION_DEFINITIVA: "bg-purple-100 text-purple-800",
     CERRADO: "bg-gray-100 text-gray-800",
   }
   return colors[status] || ""
@@ -63,10 +67,10 @@ export default async function ProtocolosPage() {
     where.involved = { some: { userId: user.id } }
   }
 
-  const incidents = await db.incident.findMany({
+  const allIncidents = await db.incident.findMany({
     where,
     include: {
-      reporter: { select: { name: true } },
+      reporter: { select: { name: true, role: true } },
       assignee: { select: { name: true } },
       involved: {
         include: {
@@ -77,7 +81,10 @@ export default async function ProtocolosPage() {
     orderBy: { createdAt: "desc" },
   })
 
-  const canCreate = ["ADMIN", "ENCARGADO", "DOCENTE"].includes(user.role)
+  const pendingApproval = allIncidents.filter((i) => i.status === "PENDIENTE_APROBACION")
+  const activeIncidents = allIncidents.filter((i) => i.status !== "PENDIENTE_APROBACION")
+
+  const canCreate = ["ADMIN", "DIRECTOR", "ENCARGADO_CONVIVENCIA", "ORIENTADOR", "PROFESOR_JEFE", "DOCENTE"].includes(user.role)
 
   return (
     <div className="space-y-6">
@@ -97,16 +104,71 @@ export default async function ProtocolosPage() {
         )}
       </div>
 
+      {pendingApproval.length > 0 && (
+        <Card className="border-amber-200">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <span className="bg-amber-100 text-amber-800 px-2 py-0.5 rounded text-sm">
+                {pendingApproval.length}
+              </span>
+              Casos pendientes de aprobación
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Título</TableHead>
+                  <TableHead>Reportado por</TableHead>
+                  <TableHead>Tipo</TableHead>
+                  <TableHead>Fecha</TableHead>
+                  <TableHead className="w-[50px]"></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {pendingApproval.map((incident) => (
+                  <TableRow key={incident.id}>
+                    <TableCell className="font-medium">{incident.title}</TableCell>
+                    <TableCell>
+                      <div>
+                        <p className="text-sm">{incident.reporter.name}</p>
+                        <p className="text-xs text-muted-foreground">{incident.reporter.role}</p>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className={getTypeBadge(incident.type)}>
+                        {INCIDENT_TYPES.find((t) => t.value === incident.type)?.label || incident.type}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {format(new Date(incident.createdAt), "dd MMM yyyy", { locale: es })}
+                    </TableCell>
+                    <TableCell>
+                      <Link
+                        href={`/dashboard/protocolos/${incident.id}`}
+                        className="inline-flex shrink-0 items-center justify-center rounded-lg size-8 hover:bg-muted transition-all"
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </Link>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
+
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base">
-            {incidents.length} incidente{incidents.length !== 1 ? "s" : ""} registrado{incidents.length !== 1 ? "s" : ""}
+            {activeIncidents.length} caso{activeIncidents.length !== 1 ? "s" : ""} activo{activeIncidents.length !== 1 ? "s" : ""}
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {incidents.length === 0 ? (
+          {activeIncidents.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-8">
-              No hay incidentes registrados aún.
+              No hay casos registrados aún.
             </p>
           ) : (
             <Table>
@@ -121,32 +183,21 @@ export default async function ProtocolosPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {incidents.map((incident) => (
+                {activeIncidents.map((incident) => (
                   <TableRow key={incident.id}>
-                    <TableCell className="font-medium">
-                      {incident.title}
-                    </TableCell>
+                    <TableCell className="font-medium">{incident.title}</TableCell>
                     <TableCell>
-                      <Badge
-                        variant="outline"
-                        className={getTypeBadge(incident.type)}
-                      >
+                      <Badge variant="outline" className={getTypeBadge(incident.type)}>
                         {INCIDENT_TYPES.find((t) => t.value === incident.type)?.label || incident.type}
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <Badge
-                        variant="secondary"
-                        className={getSeverityBadge(incident.severity)}
-                      >
+                      <Badge variant="secondary" className={getSeverityBadge(incident.severity)}>
                         {incident.severity}
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <Badge
-                        variant="secondary"
-                        className={getStatusBadge(incident.status)}
-                      >
+                      <Badge variant="secondary" className={getStatusBadge(incident.status)}>
                         {INCIDENT_STATUSES.find((s) => s.value === incident.status)?.label || incident.status}
                       </Badge>
                     </TableCell>

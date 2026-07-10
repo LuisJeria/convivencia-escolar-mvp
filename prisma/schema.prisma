@@ -15,11 +15,19 @@ model User {
   courseId String?
   course   Course? @relation(fields: [courseId], references: [id])
 
-  reportedIncidents   Incident[]         @relation("Reporter")
-  assignedIncidents   Incident[]         @relation("Assignee")
-  receivedPoints      PointTransaction[] @relation("PointStudent")
-  awardedPoints       PointTransaction[] @relation("PointAwarder")
-  incidentsAsInvolved IncidentInvolved[]
+  reportedIncidents    Incident[]          @relation("Reporter")
+  assignedIncidents   Incident[]          @relation("Assignee")
+  approvedIncidents   Incident[]          @relation("ApprovedBy")
+  rejectedIncidents   Incident[]          @relation("RejectedBy")
+  receivedPoints      PointTransaction[]  @relation("PointStudent")
+  awardedPoints       PointTransaction[]  @relation("PointAwarder")
+  incidentsAsInvolved  IncidentInvolved[]
+  filedReports        ExternalReport[]
+  resolvedAppeals     Appeal[]            @relation("AppealResolver")
+  appeals             Appeal[]            @relation("AppealAppellant")
+  disciplinaryMeasures DisciplinaryMeasure[]
+  denounceReports     DenounceReport[]
+  reviewedDenounces   DenounceReport[]    @relation("DenounceReviewer")
 }
 
 model Course {
@@ -31,41 +39,104 @@ model Course {
 }
 
 model Incident {
-  id          String   @id @default(cuid())
-  title       String
-  type        String
-  severity    String
-  status      String   @default("REPORTADO")
-  description String
-  reporterId  String
-  reporter    User     @relation("Reporter", fields: [reporterId], references: [id])
-  assigneeId  String?
-  assignee    User?    @relation("Assignee", fields: [assigneeId], references: [id])
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id                   String   @id @default(cuid())
+  title                String
+  type                 String
+  severity             String
+  status               String   @default("REPORTADO")
+  description          String
+  reporterId           String
+  reporter             User     @relation("Reporter", fields: [reporterId], references: [id])
+  assigneeId          String?
+  assignee             User?    @relation("Assignee", fields: [assigneeId], references: [id])
+  reportedAt           DateTime @default(now())
+  businessDaysElapsed  Int      @default(0)
+  needsApproval        Boolean  @default(false)
+  approvedById         String?
+  approvedBy           User?    @relation("ApprovedBy", fields: [approvedById], references: [id])
+  rejectedById         String?
+  rejectedBy           User?    @relation("RejectedBy", fields: [rejectedById], references: [id])
+  rejectionReason      String?
+  resolvedAt           DateTime?
+  closedAt             DateTime?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 
-  involved IncidentInvolved[]
-  steps    ProtocolStep[]
+  involved         IncidentInvolved[]
+  steps            ProtocolStep[]
+  measures         DisciplinaryMeasure[]
+  externalReports  ExternalReport[]
+  appeals          Appeal[]
 }
 
 model IncidentInvolved {
-  id         String   @id @default(cuid())
-  incidentId String
-  incident   Incident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
-  userId     String
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  role       String
+  id                  String   @id @default(cuid())
+  incidentId          String
+  incident            Incident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  userId              String
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role                String
+  studentNotified     Boolean  @default(false)
+  studentNotifiedAt   DateTime?
+  guardianNotified    Boolean  @default(false)
+  guardianNotifiedAt  DateTime?
 }
 
 model ProtocolStep {
-  id          String    @id @default(cuid())
+  id                   String    @id @default(cuid())
+  incidentId           String
+  incident             Incident  @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  order                Int
+  name                 String
+  description          String?
+  status               String    @default("PENDIENTE")
+  businessDaysDeadline Int
+  deadlineDate         DateTime
+  completedAt          DateTime?
+}
+
+model DisciplinaryMeasure {
+  id                          String    @id @default(cuid())
+  incidentId                  String
+  incident                    Incident  @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  type                        String
+  description                 String
+  startDate                   DateTime
+  endDate                     DateTime?
+  suspensionPedagogicalPlan  String?
+  suspensionMaterialDetails  String?
+  createdAt                   DateTime  @default(now())
+  createdById                 String?
+  createdBy                   User?     @relation(fields: [createdById], references: [id])
+}
+
+model ExternalReport {
+  id          String   @id @default(cuid())
   incidentId  String
-  incident    Incident  @relation(fields: [incidentId], references: [id], onDelete: Cascade)
-  order       Int
-  name        String
-  description String?
-  status      String    @default("PENDIENTE")
-  completedAt DateTime?
+  incident    Incident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  entity      String
+  reportDate  DateTime
+  status      String   @default("PRESENTADA")
+  description String
+  filedById   String
+  filedBy     User     @relation(fields: [filedById], references: [id])
+  createdAt   DateTime @default(now())
+}
+
+model Appeal {
+  id            String    @id @default(cuid())
+  incidentId    String
+  incident      Incident  @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  appellantId   String
+  appellant     User      @relation("AppealAppellant", fields: [appellantId], references: [id])
+  appellantType String
+  submittedAt   DateTime  @default(now())
+  description   String
+  resolution    String?
+  resolvedAt    DateTime?
+  resolvedById  String?
+  resolvedBy    User?     @relation("AppealResolver", fields: [resolvedById], references: [id])
+  result        String?
 }
 
 model PointTransaction {
@@ -77,4 +148,24 @@ model PointTransaction {
   points      Int
   reason      String
   createdAt   DateTime @default(now())
+}
+
+model DenounceReport {
+  id              String    @id @default(cuid())
+  reporterId      String
+  reporter        User      @relation(fields: [reporterId], references: [id])
+  reporterRole    String
+  reporterIsVictim Boolean   @default(true) // true = victima, false = testigo
+  title           String
+  description     String
+  involvedName    String?
+  involvedCourse  String?
+  type            String?
+  severity        String?
+  status          String    @default("PENDIENTE")
+  reviewedById    String?
+  reviewedBy      User?     @relation("DenounceReviewer", fields: [reviewedById], references: [id])
+  reviewNote      String?
+  createdAt       DateTime  @default(now())
+  reviewedAt      DateTime?
 }

@@ -6,12 +6,15 @@ import { loginDemo } from "@/lib/auth"
 import { ROLE_LABELS, ROLES } from "@/lib/constants"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Shield, Heart, GraduationCap, BookOpen, Users } from "lucide-react"
+import { Shield, Heart, GraduationCap, BookOpen, Users, UserCheck, ClipboardList, Trophy } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 
 const ROLE_ICONS: Record<string, LucideIcon> = {
   ADMIN: Shield,
-  ENCARGADO: Heart,
+  DIRECTOR: UserCheck,
+  ENCARGADO_CONVIVENCIA: Heart,
+  ORIENTADOR: ClipboardList,
+  PROFESOR_JEFE: Users,
   DOCENTE: GraduationCap,
   ESTUDIANTE: BookOpen,
   APODERADO: Users,
@@ -19,9 +22,12 @@ const ROLE_ICONS: Record<string, LucideIcon> = {
 
 const ROLE_DESCRIPTIONS: Record<string, string> = {
   ADMIN: "Gestión de escuelas, usuarios y configuración general del sistema",
-  ENCARGADO: "Gestión de protocolos, casos de convivencia y prevención",
+  DIRECTOR: "Supervisión general, aprobación de medidas graves y reportes",
+  ENCARGADO_CONVIVENCIA: "Gestión de protocolos, casos de convivencia y prevención",
+  ORIENTADOR: "Apoyo en protocolos, entrevistas, seguimiento y derivaciones",
+  PROFESOR_JEFE: "Vista de su curso, incidentes, puntos y ranking",
   DOCENTE: "Reporte de incidentes y otorgamiento de puntos por conducta positiva",
-  ESTUDIANTE: "Consulta de puntos, ranking, misiones y canje de recompensas",
+  ESTUDIANTE: "Consulta de puntos, ranking, insignias y canje de recompensas",
   APODERADO: "Seguimiento de casos de su pupilo y progreso en gamificación",
 }
 
@@ -56,7 +62,7 @@ export default function LoginPage() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {Object.entries(ROLES).map(([key]) => {
             const Icon = ROLE_ICONS[key]
             return (

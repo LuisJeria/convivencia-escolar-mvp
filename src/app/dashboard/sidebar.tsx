@@ -13,23 +13,36 @@ import {
   Settings,
   ChevronLeft,
   LogOut,
+  Megaphone,
   type LucideIcon,
 } from "lucide-react"
 
-const ADMIN_LINKS: NavLink[] = [
+const DIRECTOR_LINKS: NavLink[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/dashboard/protocolos", label: "Protocolos", icon: ShieldAlert },
+  { href: "/dashboard/denuncias", label: "Denuncias", icon: Megaphone },
   { href: "/dashboard/gamificacion", label: "Gamificación", icon: Trophy },
-  { href: "#", label: "Usuarios", icon: Users, disabled: true },
-  { href: "#", label: "Escuelas", icon: School, disabled: true },
-  { href: "#", label: "Configuración", icon: Settings, disabled: true },
+  { href: "#", label: "Reportes", icon: ChevronLeft, disabled: true },
 ]
 
 const ENCARGADO_LINKS: NavLink[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/dashboard/protocolos", label: "Protocolos", icon: ShieldAlert },
+  { href: "/dashboard/denuncias", label: "Denuncias", icon: Megaphone },
   { href: "/dashboard/gamificacion", label: "Gamificación", icon: Trophy },
   { href: "#", label: "Reportes", icon: ChevronLeft, disabled: true },
+]
+
+const ORIENTADOR_LINKS: NavLink[] = [
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/dashboard/protocolos", label: "Protocolos", icon: ShieldAlert },
+  { href: "/dashboard/gamificacion", label: "Gamificación", icon: Trophy },
+]
+
+const PROFESOR_JEFE_LINKS: NavLink[] = [
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/dashboard/protocolos", label: "Mi Curso", icon: ShieldAlert },
+  { href: "/dashboard/gamificacion", label: "Gamificación", icon: Trophy },
 ]
 
 const DOCENTE_LINKS: NavLink[] = [
@@ -42,12 +55,24 @@ const ESTUDIANTE_LINKS: NavLink[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/dashboard/gamificacion", label: "Gamificación", icon: Trophy },
   { href: "/dashboard/protocolos", label: "Mis Casos", icon: ShieldAlert },
+  { href: "/dashboard/denuncias/nueva", label: "Denunciar", icon: Megaphone },
 ]
 
 const APODERADO_LINKS: NavLink[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/dashboard/protocolos", label: "Casos", icon: ShieldAlert },
   { href: "/dashboard/gamificacion", label: "Gamificación", icon: Trophy },
+  { href: "/dashboard/denuncias/nueva", label: "Denunciar", icon: Megaphone },
+]
+
+const ADMIN_LINKS: NavLink[] = [
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/dashboard/protocolos", label: "Protocolos", icon: ShieldAlert },
+  { href: "/dashboard/denuncias", label: "Denuncias", icon: Megaphone },
+  { href: "/dashboard/gamificacion", label: "Gamificación", icon: Trophy },
+  { href: "#", label: "Usuarios", icon: Users, disabled: true },
+  { href: "#", label: "Escuelas", icon: School, disabled: true },
+  { href: "#", label: "Configuración", icon: Settings, disabled: true },
 ]
 
 type NavLink = {
@@ -61,8 +86,14 @@ function getLinks(role: string): NavLink[] {
   switch (role) {
     case "ADMIN":
       return ADMIN_LINKS
-    case "ENCARGADO":
+    case "DIRECTOR":
+      return DIRECTOR_LINKS
+    case "ENCARGADO_CONVIVENCIA":
       return ENCARGADO_LINKS
+    case "ORIENTADOR":
+      return ORIENTADOR_LINKS
+    case "PROFESOR_JEFE":
+      return PROFESOR_JEFE_LINKS
     case "DOCENTE":
       return DOCENTE_LINKS
     case "ESTUDIANTE":
